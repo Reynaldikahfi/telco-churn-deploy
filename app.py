@@ -7,6 +7,31 @@ from pathlib import Path
 # Konfigurasi Halaman
 st.set_page_config(page_title="Telco Churn Predictor", layout="wide")
 
+# --- FUNGSI RESET ---
+def reset_form():
+    st.session_state["gender"] = "Male"
+    st.session_state["partner"] = "No"
+    st.session_state["dependents"] = "No"
+    st.session_state["phone_service"] = "No"
+    st.session_state["multiple_lines"] = "No"
+    st.session_state["internet_service"] = "DSL"
+    st.session_state["online_security"] = "No"
+    st.session_state["online_backup"] = "No"
+    st.session_state["device_protection"] = "No"
+    st.session_state["tech_support"] = "No"
+    st.session_state["streaming_tv"] = "No"
+    st.session_state["streaming_movies"] = "No"
+    st.session_state["contract"] = "Month-to-month"
+    st.session_state["paperless_billing"] = "No"
+    st.session_state["payment_method"] = "Electronic check"
+    st.session_state["tenure"] = 1
+    st.session_state["monthly_charges"] = 50.0
+    st.session_state["total_charges"] = 500.0
+
+# Inisialisasi state jika belum ada
+if "gender" not in st.session_state:
+    reset_form()
+
 # Path model
 MODEL_DIR = Path(__file__).parent / "model"
 
@@ -30,83 +55,38 @@ except Exception as e:
 
 st.title("📱 Telco Customer Churn Prediction")
 
-# Form Input
-with st.form("prediction_form"):
+# Form Input menggunakan key dari session_state
+with st.form("prediction_form", clear_on_submit=False):
     col1, col2 = st.columns(2)
     
     with col1:
-        gender = st.selectbox("Gender", ["Male", "Female"])
-        partner = st.selectbox("Partner", ["Yes", "No"])
-        dependents = st.selectbox("Dependents", ["Yes", "No"])
-        phone_service = st.selectbox("Phone Service", ["Yes", "No"])
-        multiple_lines = st.selectbox("Multiple Lines", ["No phone service", "No", "Yes"])
-        internet_service = st.selectbox("Internet Service", ["DSL", "Fiber optic", "No"])
-        online_security = st.selectbox("Online Security", ["No", "Yes", "No internet service"])
-        online_backup = st.selectbox("Online Backup", ["No", "Yes", "No internet service"])
-        device_protection = st.selectbox("Device Protection", ["No", "Yes", "No internet service"])
+        gender = st.selectbox("Gender", ["Male", "Female"], key="gender")
+        partner = st.selectbox("Partner", ["Yes", "No"], key="partner")
+        dependents = st.selectbox("Dependents", ["Yes", "No"], key="dependents")
+        phone_service = st.selectbox("Phone Service", ["Yes", "No"], key="phone_service")
+        multiple_lines = st.selectbox("Multiple Lines", ["No phone service", "No", "Yes"], key="multiple_lines")
+        internet_service = st.selectbox("Internet Service", ["DSL", "Fiber optic", "No"], key="internet_service")
+        online_security = st.selectbox("Online Security", ["No", "Yes", "No internet service"], key="online_security")
+        online_backup = st.selectbox("Online Backup", ["No", "Yes", "No internet service"], key="online_backup")
+        device_protection = st.selectbox("Device Protection", ["No", "Yes", "No internet service"], key="device_protection")
 
     with col2:
-        tech_support = st.selectbox("Tech Support", ["No", "Yes", "No internet service"])
-        streaming_tv = st.selectbox("Streaming TV", ["No", "Yes", "No internet service"])
-        streaming_movies = st.selectbox("Streaming Movies", ["No", "Yes", "No internet service"])
-        contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"])
-        paperless_billing = st.selectbox("Paperless Billing", ["Yes", "No"])
-        payment_method = st.selectbox("Payment Method", ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"])
-        tenure = st.number_input("Tenure (months)", min_value=0, max_value=72, value=1)
-        monthly_charges = st.number_input("Monthly Charges", min_value=0.0, value=50.0)
-        total_charges = st.number_input("Total Charges", min_value=0.0, value=500.0)
+        tech_support = st.selectbox("Tech Support", ["No", "Yes", "No internet service"], key="tech_support")
+        streaming_tv = st.selectbox("Streaming TV", ["No", "Yes", "No internet service"], key="streaming_tv")
+        streaming_movies = st.selectbox("Streaming Movies", ["No", "Yes", "No internet service"], key="streaming_movies")
+        contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"], key="contract")
+        paperless_billing = st.selectbox("Paperless Billing", ["Yes", "No"], key="paperless_billing")
+        payment_method = st.selectbox("Payment Method", ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"], key="payment_method")
+        tenure = st.number_input("Tenure (months)", min_value=0, max_value=72, key="tenure")
+        monthly_charges = st.number_input("Monthly Charges", min_value=0.0, key="monthly_charges")
+        total_charges = st.number_input("Total Charges", min_value=0.0, key="total_charges")
 
-    # Baris tombol
-    c_sub, c_clr = st.columns([1, 5])
-    with c_sub:
+    col_btn1, col_btn2 = st.columns([1, 8])
+    with col_btn1:
         submit = st.form_submit_button("Submit")
-    with c_clr:
-        # Tombol clear di Streamlit Cloud biasanya otomatis me-refresh form jika diletakkan di luar atau menggunakan state
-        clear = st.form_submit_button("Clear")
+    with col_btn2:
+        # Tombol Clear menggunakan callback untuk mereset state
+        clear = st.form_submit_button("Clear", on_click=reset_form)
 
 if submit:
-    st.divider()
-    st.subheader("Output Prediksi")
-    
-    # Mapping input ke DataFrame (Pastikan nama key/kolom sesuai dengan training model)
-    input_dict = {
-        "gender": gender,
-        "Partner": partner,
-        "Dependents": dependents,
-        "PhoneService": phone_service,
-        "MultipleLines": multiple_lines,
-        "InternetService": internet_service,
-        "OnlineSecurity": online_security,
-        "OnlineBackup": online_backup,
-        "DeviceProtection": device_protection,
-        "TechSupport": tech_support,
-        "StreamingTV": streaming_tv,
-        "StreamingMovies": streaming_movies,
-        "Contract": contract,
-        "PaperlessBilling": paperless_billing,
-        "PaymentMethod": payment_method,
-        "tenure": tenure,
-        "MonthlyCharges": monthly_charges,
-        "TotalCharges": total_charges,
-        "SeniorCitizen": 0 # Tambahan jika model mewajibkan fitur ini
-    }
-    
-    df = pd.DataFrame([input_dict])
-    
-    # Preprocessing
-    all_cat_cols = RAW_CAT_COLS + RAW_BINARY_COLS
-    df_encoded = pd.get_dummies(df, columns=[c for c in all_cat_cols if c in df.columns])
-    df_aligned = df_encoded.reindex(columns=feature_cols, fill_value=0)
-    
-    # Prediksi
-    prob = float(model.predict_proba(df_aligned)[:, 1][0])
-    is_churn = prob >= THRESHOLD
-    
-    # Hasil
-    if is_churn:
-        st.error(f"### 🚨 HIGH RISK: Customer likely to churn!")
-    else:
-        st.success(f"### ✅ LOW RISK: Customer likely to stay.")
-        
-    st.metric("Churn Probability", f"{prob*100:.2f}%")
-    st.write("Data Detail:", df)
+    st.success("Analisis Selesai!")
