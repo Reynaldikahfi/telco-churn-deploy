@@ -234,3 +234,5 @@ docker build -t churn-api:v1.0 .
 | `Address already in use: port 8000`              | Port sudah dipakai proses lain      | Jalankan `uvicorn app.main:app --reload --port 8001`           |
 | `docker: Cannot connect`                         | Docker Desktop belum jalan          | Buka Docker Desktop, tunggu sampai icon-nya hijau              |
 | `422 Unprocessable Entity`                       | Field input salah / tipe data salah | Cek schema di http://localhost:8000/docs                       |
+
+<!-- CI/CD test -->
