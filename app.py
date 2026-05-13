@@ -52,9 +52,9 @@ with st.form("prediction_form"):
         contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"])
         paperless_billing = st.selectbox("Paperless Billing", ["Yes", "No"])
         payment_method = st.selectbox("Payment Method", ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"])
-        tenure = st.number_input("Tenure (months)",)
-        monthly_charges = st.number_input("Monthly Charges",)
-        total_charger = st.number_input("Total Charger",)
+        tenure = st.number_input("Tenure (months)", min_value=0, max_value=72, value=1)
+        monthly_charges = st.number_input("Monthly Charges", min_value=0, value=50)
+        total_charger = st.number_input("Total Charger", min_value=0, value=500)
 
     # Baris tombol
     c_sub, c_clr = st.columns([1, 5])
