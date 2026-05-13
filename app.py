@@ -1,92 +1,63 @@
 import streamlit as st
-import joblib
 import pandas as pd
-import json
-from pathlib import Path
+import joblib
 
-# Konfigurasi Halaman
-st.set_page_config(page_title="Telco Churn Predictor", layout="wide")
+# Load model (pastikan path file sesuai dengan di GitHub)
+# model = joblib.load('model/model_churn.pkl')
 
-# Path model (menyesuaikan struktur folder Anda)
-MODEL_DIR = Path(__file__).parent / "model"
+st.set_page_config(page_title="Telco Churn Prediction", layout="centered")
 
-@st.cache_resource
-def load_artifacts():
-    model = joblib.load(MODEL_DIR / "model.pkl")
-    feature_cols = joblib.load(MODEL_DIR / "feature_cols.pkl")
-    prep_info = joblib.load(MODEL_DIR / "preprocessing_info.pkl")
-    with open(MODEL_DIR / "model_meta.json") as f:
-        meta = json.load(f)
-    return model, feature_cols, prep_info, meta
+st.title("Telco Customer Churn Prediction")
+st.write("Silakan masukkan data pelanggan di bawah ini:")
 
-try:
-    model, feature_cols, prep_info, meta = load_artifacts()
-    THRESHOLD = meta["threshold"]
-    RAW_CAT_COLS = prep_info["raw_cat_cols"]
-    RAW_BINARY_COLS = prep_info["raw_binary_cols"]
-except Exception as e:
-    st.error(f"Gagal memuat model: {e}")
-    st.stop()
+# Menggunakan form agar lebih rapi
+with st.form("churn_form"):
+    col1, col2 = st.columns(2)
 
-# --- UI STREAMLIT ---
-st.title("📱 Telco Customer Churn Prediction")
-st.write(f"Model Version: {meta['version']}")
-
-with st.form("prediction_form"):
-    col1, col2, col3 = st.columns(3)
-    
     with col1:
-        gender = st.selectbox("Gender", ["Male", "Female"])
-        SeniorCitizen = st.selectbox("Senior Citizen", [0, 1])
-        Partner = st.selectbox("Partner", ["Yes", "No"])
-        Dependents = st.selectbox("Dependents", ["Yes", "No"])
-        tenure = st.slider("Tenure (Months)", 0, 72, 12)
-        
+        gender = st.selectbox("Gender", ["Female", "Male"])
+        partner = st.selectbox("Partner", ["Yes", "No"])
+        dependents = st.selectbox("Dependents", ["Yes", "No"])
+        phone_service = st.selectbox("Phone Service", ["Yes", "No"])
+        multiple_lines = st.selectbox("Multiple Lines", ["No phone service", "No", "Yes"])
+        internet_service = st.selectbox("Internet Service", ["DSL", "Fiber optic", "No"])
+        online_security = st.selectbox("Online Security", ["No", "Yes", "No internet service"])
+        online_backup = st.selectbox("Online Backup", ["No", "Yes", "No internet service"])
+        device_protection = st.selectbox("Device Protection", ["No", "Yes", "No internet service"])
+
     with col2:
-        PhoneService = st.selectbox("Phone Service", ["Yes", "No"])
-        MultipleLines = st.selectbox("Multiple Lines", ["Yes", "No", "No phone service"])
-        InternetService = st.selectbox("Internet Service", ["DSL", "Fiber optic", "No"])
-        OnlineSecurity = st.selectbox("Online Security", ["Yes", "No", "No internet service"])
-        TechSupport = st.selectbox("Tech Support", ["Yes", "No", "No internet service"])
-        
-    with col3:
-        Contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"])
-        PaperlessBilling = st.selectbox("Paperless Billing", ["Yes", "No"])
-        PaymentMethod = st.selectbox("Payment Method", ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"])
-        MonthlyCharges = st.number_input("Monthly Charges", value=50.0)
-        TotalCharges = st.number_input("Total Charges", value=500.0)
+        tech_support = st.selectbox("Tech Support", ["No", "Yes", "No internet service"])
+        streaming_tv = st.selectbox("Streaming TV", ["No", "Yes", "No internet service"])
+        streaming_movies = st.selectbox("Streaming Movies", ["No", "Yes", "No internet service"])
+        contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"])
+        paperless_billing = st.selectbox("Paperless Billing", ["Yes", "No"])
+        payment_method = st.selectbox("Payment Method", [
+            "Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"
+        ])
+        tenure = st.number_input("Tenure (months)", min_value=0, max_value=100, value=1)
+        monthly_charges = st.number_input("Monthly Charges", min_value=0.0, value=0.0)
+        total_charges = st.number_input("Total Charges", min_value=0.0, value=0.0)
 
-    submit = st.form_submit_button("Predict Churn Risk")
+    # Tombol Submit
+    submitted = st.form_submit_button("Submit")
 
-if submit:
-    # Preprocessing (Logika sama dengan FastAPI Anda)
-    input_data = {
-        "gender": gender, "SeniorCitizen": SeniorCitizen, "Partner": Partner,
-        "Dependents": Dependents, "tenure": tenure, "PhoneService": PhoneService,
-        "MultipleLines": MultipleLines, "InternetService": InternetService,
-        "OnlineSecurity": OnlineSecurity, "TechSupport": TechSupport,
-        "Contract": Contract, "PaperlessBilling": PaperlessBilling,
-        "PaymentMethod": PaymentMethod, "MonthlyCharges": MonthlyCharges,
-        "TotalCharges": TotalCharges,
-        # Default kolom lain yang mungkin dibutuhkan model Anda
-        "OnlineBackup": "No", "DeviceProtection": "No", 
-        "StreamingTV": "No", "StreamingMovies": "No"
-    }
+# Logika Output setelah klik Submit
+if submitted:
+    st.subheader("Output Prediksi")
     
-    df = pd.DataFrame([input_data])
-    all_cat_cols = RAW_CAT_COLS + RAW_BINARY_COLS
-    df_encoded = pd.get_dummies(df, columns=all_cat_cols)
-    df_aligned = df_encoded.reindex(columns=feature_cols, fill_value=0)
+    # Membuat DataFrame dari input (sesuaikan dengan format model Anda)
+    input_data = pd.DataFrame({
+        'gender': [gender],
+        'Partner': [partner],
+        'Dependents': [dependents],
+        'tenure': [tenure],
+        'PhoneService': [phone_service],
+        # ... tambahkan kolom lainnya sesuai urutan fitur model ...
+    })
     
-    # Prediksi
-    prob = float(model.predict_proba(df_aligned)[:, 1][0])
-    is_churn = prob >= THRESHOLD
+    st.write("Data yang dimasukkan:")
+    st.dataframe(input_data)
     
-    # Tampilkan Hasil
-    st.divider()
-    if is_churn:
-        st.error(f"### 🚨 HIGH RISK: Customer likely to churn!")
-    else:
-        st.success(f"### ✅ LOW RISK: Customer likely to stay.")
-        
-    st.metric("Churn Probability", f"{prob*100:.2f}%")
+    # Contoh pemanggilan prediksi:
+    # prediction = model.predict(input_data)
+    # st.success(f"Hasil Prediksi: {prediction[0]}")
