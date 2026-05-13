@@ -1,21 +1,41 @@
 import streamlit as st
-import pandas as pd
 import joblib
+import pandas as pd
+import json
+from pathlib import Path
 
-# Load model (pastikan path file sesuai dengan di GitHub)
-# model = joblib.load('model/model_churn.pkl')
+# Konfigurasi Halaman
+st.set_page_config(page_title="Telco Churn Predictor", layout="wide")
 
-st.set_page_config(page_title="Telco Churn Prediction", layout="centered")
+# Path model
+MODEL_DIR = Path(__file__).parent / "model"
 
-st.title("Telco Customer Churn Prediction")
-st.write("Silakan masukkan data pelanggan di bawah ini:")
+@st.cache_resource
+def load_artifacts():
+    model = joblib.load(MODEL_DIR / "model.pkl")
+    feature_cols = joblib.load(MODEL_DIR / "feature_cols.pkl")
+    prep_info = joblib.load(MODEL_DIR / "preprocessing_info.pkl")
+    with open(MODEL_DIR / "model_meta.json") as f:
+        meta = json.load(f)
+    return model, feature_cols, prep_info, meta
 
-# Menggunakan form agar lebih rapi
-with st.form("churn_form"):
+try:
+    model, feature_cols, prep_info, meta = load_artifacts()
+    THRESHOLD = meta["threshold"]
+    RAW_CAT_COLS = prep_info["raw_cat_cols"]
+    RAW_BINARY_COLS = prep_info["raw_binary_cols"]
+except Exception as e:
+    st.error(f"Gagal memuat model: {e}")
+    st.stop()
+
+st.title("📱 Telco Customer Churn Prediction")
+
+# Form Input
+with st.form("prediction_form"):
     col1, col2 = st.columns(2)
-
+    
     with col1:
-        gender = st.selectbox("Gender", ["Female", "Male"])
+        gender = st.selectbox("Gender", ["Male", "Female"])
         partner = st.selectbox("Partner", ["Yes", "No"])
         dependents = st.selectbox("Dependents", ["Yes", "No"])
         phone_service = st.selectbox("Phone Service", ["Yes", "No"])
@@ -31,33 +51,62 @@ with st.form("churn_form"):
         streaming_movies = st.selectbox("Streaming Movies", ["No", "Yes", "No internet service"])
         contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"])
         paperless_billing = st.selectbox("Paperless Billing", ["Yes", "No"])
-        payment_method = st.selectbox("Payment Method", [
-            "Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"
-        ])
-        tenure = st.number_input("Tenure (months)", min_value=0, max_value=100, value=1)
-        monthly_charges = st.number_input("Monthly Charges", min_value=0.0, value=0.0)
-        total_charges = st.number_input("Total Charges", min_value=0.0, value=0.0)
+        payment_method = st.selectbox("Payment Method", ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"])
+        tenure = st.number_input("Tenure (months)", min_value=0, max_value=72, value=1)
+        monthly_charges = st.number_input("Monthly Charges", min_value=0.0, value=50.0)
+        total_charges = st.number_input("Total Charges", min_value=0.0, value=500.0)
 
-    # Tombol Submit
-    submitted = st.form_submit_button("Submit")
+    # Baris tombol
+    c_sub, c_clr = st.columns([1, 5])
+    with c_sub:
+        submit = st.form_submit_button("Submit")
+    with c_clr:
+        # Tombol clear di Streamlit Cloud biasanya otomatis me-refresh form jika diletakkan di luar atau menggunakan state
+        clear = st.form_submit_button("Clear")
 
-# Logika Output setelah klik Submit
-if submitted:
+if submit:
+    st.divider()
     st.subheader("Output Prediksi")
     
-    # Membuat DataFrame dari input (sesuaikan dengan format model Anda)
-    input_data = pd.DataFrame({
-        'gender': [gender],
-        'Partner': [partner],
-        'Dependents': [dependents],
-        'tenure': [tenure],
-        'PhoneService': [phone_service],
-        # ... tambahkan kolom lainnya sesuai urutan fitur model ...
-    })
+    # Mapping input ke DataFrame (Pastikan nama key/kolom sesuai dengan training model)
+    input_dict = {
+        "gender": gender,
+        "Partner": partner,
+        "Dependents": dependents,
+        "PhoneService": phone_service,
+        "MultipleLines": multiple_lines,
+        "InternetService": internet_service,
+        "OnlineSecurity": online_security,
+        "OnlineBackup": online_backup,
+        "DeviceProtection": device_protection,
+        "TechSupport": tech_support,
+        "StreamingTV": streaming_tv,
+        "StreamingMovies": streaming_movies,
+        "Contract": contract,
+        "PaperlessBilling": paperless_billing,
+        "PaymentMethod": payment_method,
+        "tenure": tenure,
+        "MonthlyCharges": monthly_charges,
+        "TotalCharges": total_charges,
+        "SeniorCitizen": 0 # Tambahan jika model mewajibkan fitur ini
+    }
     
-    st.write("Data yang dimasukkan:")
-    st.dataframe(input_data)
+    df = pd.DataFrame([input_dict])
     
-    # Contoh pemanggilan prediksi:
-    # prediction = model.predict(input_data)
-    # st.success(f"Hasil Prediksi: {prediction[0]}")
+    # Preprocessing
+    all_cat_cols = RAW_CAT_COLS + RAW_BINARY_COLS
+    df_encoded = pd.get_dummies(df, columns=[c for c in all_cat_cols if c in df.columns])
+    df_aligned = df_encoded.reindex(columns=feature_cols, fill_value=0)
+    
+    # Prediksi
+    prob = float(model.predict_proba(df_aligned)[:, 1][0])
+    is_churn = prob >= THRESHOLD
+    
+    # Hasil
+    if is_churn:
+        st.error(f"### 🚨 HIGH RISK: Customer likely to churn!")
+    else:
+        st.success(f"### ✅ LOW RISK: Customer likely to stay.")
+        
+    st.metric("Churn Probability", f"{prob*100:.2f}%")
+    st.write("Data Detail:", df)
