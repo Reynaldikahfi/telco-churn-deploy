@@ -1,0 +1,10 @@
+# requirements.txt — Production
+xgboost==2.1.4
+scikit-learn==1.6.1
+numpy==1.26.4
+pandas==2.2.2
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+joblib==1.4.2
+prometheus-client==0.21.1

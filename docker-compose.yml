@@ -1,0 +1,54 @@
+# =============================================================
+# docker-compose.yml  —  Phase 3: Multi-service stack
+# =============================================================
+#
+# Services:
+#   churn-api   → FastAPI inference (port 8000)
+#   mlflow-ui   → MLflow experiment tracking UI (port 5000)
+#
+# Cara pakai:
+#   docker compose up --build       → build dan jalankan semua
+#   docker compose up --build -d    → jalankan di background
+#   docker compose down             → stop semua service
+#   docker compose logs -f churn-api → lihat log real-time
+# =============================================================
+
+services:
+
+  churn-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: churn-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount folder model agar bisa update model tanpa rebuild image
+      - ./model:/app/model:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  mlflow-ui:
+    image: python:3.12-slim
+    container_name: mlflow-ui
+    working_dir: /mlflow
+    volumes:
+      # Mount folder mlruns dari project kamu (hasil training di Colab)
+      - ./mlruns:/mlflow/mlruns
+    ports:
+      - "5000:5000"
+    command: >
+      sh -c "pip install mlflow --quiet &&
+             mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri /mlflow/mlruns"
+    restart: unless-stopped
+
+# Network default: semua service bisa saling komunikasi via nama service
+# churn-api bisa akses mlflow-ui di http://mlflow-ui:5000

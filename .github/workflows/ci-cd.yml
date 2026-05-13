@@ -1,0 +1,87 @@
+# =============================================================
+# .github/workflows/ci-cd.yml  —  Phase 4: CI/CD Pipeline
+# =============================================================
+#
+# Trigger: setiap push ke branch 'main'
+#
+# Pipeline:
+#   1. Checkout kode
+#   2. Setup Python & install dependencies
+#   3. Jalankan pytest (unit test)
+#   4. Build Docker image
+#   5. Push ke Docker Hub
+#
+# Setup yang diperlukan di GitHub:
+#   Settings → Secrets → Actions → tambahkan:
+#     DOCKERHUB_USERNAME  → username Docker Hub kamu
+#     DOCKERHUB_TOKEN     → access token dari hub.docker.com
+# =============================================================
+
+name: CI/CD — Churn API
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  IMAGE_NAME: churn-api
+
+jobs:
+
+  # ── Job 1: Test ──────────────────────────────────────────────
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Jalankan pytest
+        run: pytest tests/ -v --tb=short
+
+  # ── Job 2: Build & Push Docker ──────────────────────────────
+  docker:
+    name: Build & push image
+    runs-on: ubuntu-latest
+    needs: test                  # hanya jalan jika test lulus
+    if: github.ref == 'refs/heads/main'   # hanya untuk push ke main
+
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Login ke Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build dan push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Summary
+        run: |
+          echo "Image berhasil di-push:"
+          echo "  ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+          echo "  ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"

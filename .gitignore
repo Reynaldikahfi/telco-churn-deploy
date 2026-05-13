@@ -1,0 +1,67 @@
+# =============================================================
+# .gitignore — Telco Churn Deploy
+# =============================================================
+
+# ── Virtual Environment ──────────────────────────────────────
+venv/
+.venv/
+env/
+
+# ── Python cache ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# ── Model files (ukuran besar, simpan di cloud storage) ──────
+# UNCOMMENT baris di bawah jika tidak mau push model ke GitHub
+# model/*.pkl
+# model/*.json
+
+# ── Data mentah (jangan push dataset ke GitHub) ──────────────
+data/
+*.csv
+
+# ── Jupyter Notebook output (hapus output sebelum commit) ────
+notebooks/.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── MLflow tracking ──────────────────────────────────────────
+mlruns/
+mlartifacts/
+
+# ── Folder Colab & trash ─────────────────────────────────────
+Colab/
+.trash/
+
+# ── Environment variables (JANGAN PERNAH push file ini!) ─────
+.env
+.env.local
+*.env
+
+# ── Log files ────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Docker ───────────────────────────────────────────────────
+.docker/
+
+# ── AWS credentials (JANGAN PERNAH push!) ───────────────────
+.aws/
+*.pem
+*.key
+
+# ── VSCode settings (opsional, boleh di-commit atau tidak) ───
+.vscode/
+
+# ── Windows system files ─────────────────────────────────────
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ── Temporary files ──────────────────────────────────────────
+*.tmp
+*.temp
+dist/
+build/
+*.egg-info/
