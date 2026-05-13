@@ -31,7 +31,7 @@ except Exception as e:
 st.title("📱 Telco Customer Churn Prediction")
 
 # Form Input
-with st.form("prediction_form"):
+with st.form("prediction_form", clear_on_submit=True):
     col1, col2 = st.columns(2)
     
     with col1:
