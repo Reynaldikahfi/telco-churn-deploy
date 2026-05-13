@@ -35,11 +35,13 @@ with st.form("prediction_form"):
     col1, col2 = st.columns(2)
     
     with col1:
+        # Untuk selectbox, pilihan pertama adalah default. 
+        # Anda bisa menambahkan "-" sebagai pilihan kosong jika model mengizinkan.
         gender = st.selectbox("Gender", ["Male", "Female"])
-        partner = st.selectbox("Partner", ["Yes", "No"])
-        dependents = st.selectbox("Dependents", ["Yes", "No"])
-        phone_service = st.selectbox("Phone Service", ["Yes", "No"])
-        multiple_lines = st.selectbox("Multiple Lines", ["No phone service", "No", "Yes"])
+        partner = st.selectbox("Partner", ["No", "Yes"])
+        dependents = st.selectbox("Dependents", ["No", "Yes"])
+        phone_service = st.selectbox("Phone Service", ["No", "Yes"])
+        multiple_lines = st.selectbox("Multiple Lines", ["No", "Yes", "No phone service"])
         internet_service = st.selectbox("Internet Service", ["DSL", "Fiber optic", "No"])
         online_security = st.selectbox("Online Security", ["No", "Yes", "No internet service"])
         online_backup = st.selectbox("Online Backup", ["No", "Yes", "No internet service"])
@@ -50,61 +52,63 @@ with st.form("prediction_form"):
         streaming_tv = st.selectbox("Streaming TV", ["No", "Yes", "No internet service"])
         streaming_movies = st.selectbox("Streaming Movies", ["No", "Yes", "No internet service"])
         contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"])
-        paperless_billing = st.selectbox("Paperless Billing", ["Yes", "No"])
+        paperless_billing = st.selectbox("Paperless Billing", ["No", "Yes"])
         payment_method = st.selectbox("Payment Method", ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"])
-        tenure = st.number_input("Tenure (months)", min_value=0, max_value=72, value=1)
-        monthly_charges = st.number_input("Monthly Charges", min_value=0, value=50)
-        total_charger = st.number_input("Total Charger", min_value=0, value=500)
+        
+        # Mengubah 'value' menjadi 0 agar terlihat kosong/bersih
+        tenure = st.number_input("Tenure (months)", min_value=0, max_value=72, value=0)
+        monthly_charges = st.number_input("Monthly Charges", min_value=0, value=0)
+        total_charger = st.number_input("Total Charger", min_value=0, value=0)
 
     # Baris tombol
     c_sub, c_clr = st.columns([1, 5])
     with c_sub:
         submit = st.form_submit_button("Submit")
     with c_clr:
-        # Tombol clear di Streamlit Cloud biasanya otomatis me-refresh form jika diletakkan di luar atau menggunakan state
         clear = st.form_submit_button("Clear")
+        if clear:
+            st.rerun()
 
 if submit:
-    st.divider()
-    st.subheader("Output Prediksi")
-    
-    # Mapping input ke DataFrame (Pastikan nama key/kolom sesuai dengan training model)
-    input_dict = {
-        "gender": gender,
-        "Partner": partner,
-        "Dependents": dependents,
-        "PhoneService": phone_service,
-        "MultipleLines": multiple_lines,
-        "InternetService": internet_service,
-        "OnlineSecurity": online_security,
-        "OnlineBackup": online_backup,
-        "DeviceProtection": device_protection,
-        "TechSupport": tech_support,
-        "StreamingTV": streaming_tv,
-        "StreamingMovies": streaming_movies,
-        "Contract": contract,
-        "PaperlessBilling": paperless_billing,
-        "PaymentMethod": payment_method,
-        "tenure": tenure,
-        "MonthlyCharges": monthly_charges,
-        "TotalCharger": total_charger,
-    }
-    
-    df = pd.DataFrame([input_dict])
-    
-    # Preprocessing
-    all_cat_cols = RAW_CAT_COLS + RAW_BINARY_COLS
-    df_encoded = pd.get_dummies(df, columns=[c for c in all_cat_cols if c in df.columns])
-    df_aligned = df_encoded.reindex(columns=feature_cols, fill_value=0)
-    
-    # Prediksi
-    prob = float(model.predict_proba(df_aligned)[:, 1][0])
-    is_churn = prob >= THRESHOLD
-    
-    # Hasil
-    if is_churn:
-        st.error(f"### 🚨 HIGH RISK: Customer likely to churn!")
+    # Cek jika user belum mengisi data (opsional)
+    if tenure == 0 and monthly_charges == 0:
+        st.warning("Mohon isi data tenure dan charges terlebih dahulu.")
     else:
-        st.success(f"### ✅ LOW RISK: Customer likely to stay.")
+        st.divider()
+        st.subheader("Output Prediksi")
         
-    st.metric("Churn Probability", f"{prob*100:.2f}%")
+        input_dict = {
+            "gender": gender,
+            "Partner": partner,
+            "Dependents": dependents,
+            "PhoneService": phone_service,
+            "MultipleLines": multiple_lines,
+            "InternetService": internet_service,
+            "OnlineSecurity": online_security,
+            "OnlineBackup": online_backup,
+            "DeviceProtection": device_protection,
+            "TechSupport": tech_support,
+            "StreamingTV": streaming_tv,
+            "StreamingMovies": streaming_movies,
+            "Contract": contract,
+            "PaperlessBilling": paperless_billing,
+            "PaymentMethod": payment_method,
+            "tenure": tenure,
+            "MonthlyCharges": monthly_charges,
+            "TotalCharger": total_charger,
+        }
+        
+        df = pd.DataFrame([input_dict])
+        all_cat_cols = RAW_CAT_COLS + RAW_BINARY_COLS
+        df_encoded = pd.get_dummies(df, columns=[c for c in all_cat_cols if c in df.columns])
+        df_aligned = df_encoded.reindex(columns=feature_cols, fill_value=0)
+        
+        prob = float(model.predict_proba(df_aligned)[:, 1][0])
+        is_churn = prob >= THRESHOLD
+        
+        if is_churn:
+            st.error(f"### 🚨 HIGH RISK: Customer likely to churn!")
+        else:
+            st.success(f"### ✅ LOW RISK: Customer likely to stay.")
+            
+        st.metric("Churn Probability", f"{prob*100:.2f}%")
